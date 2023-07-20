@@ -93,7 +93,22 @@ class Fourier_Indicator_Detector:
             ax1.imshow(frame_1channel, cmap='gray')
 
             #ax2=fig.add_subplot(1,2,2)
+            ax2.clear()  # Clear the previous FFT plot
+            ax2.set_xlim(0, 6.1)
+            ax2.set_ylim(0, 0.1*np.max(fft_amps))
             ax2.plot(fft_freqs, np.abs(fft_amps))
+
+            # Add vertical lines for first harmonic wave
+            ax2.axvline(x=1.0, linestyle=':', color='red', label='1 Hz')
+            ax2.axvline(x=1.5, linestyle='--', color='red', label='1.5 Hz')
+            ax2.axvline(x=2.0, linestyle=':', color='red', label='2 Hz')
+
+            # Add vertical lines for second harmonic wave
+            ax2.axvline(x=3.0, linestyle=':', color='blue', label='3 Hz')
+            ax2.axvline(x=4.5, linestyle='--', color='blue', label='4.5 Hz')
+            ax2.axvline(x=6.0, linestyle=':', color='blue', label='6 Hz')
+
+            plt.pause(0.001)  # Pause briefly to update the plot
 
    
         if not isinstance(video, Video):
@@ -107,10 +122,10 @@ class Fourier_Indicator_Detector:
             ax2 = fig.add_subplot(1,2,2)
             ax2.set_xlabel('Frequency [Hz]')
             ax2.set_ylabel('Amplitude (tbd)')
-            #ax2.set_xlim(0, 10)
+            
             #ax2.set_ylim(0, 1)
 
-            for i in range(10, len(video.cropped_frames)+1):
+            for i in range(2000, len(video.cropped_frames)+1):
 
                 print(f'calculating FFT for frame {i}')
 
@@ -145,12 +160,15 @@ class Fourier_Indicator_Detector:
                 plt.ylabel('Amplitude (tbd)') """
                 
                 #plt.draw()
-                plt.show(block=False)
+                #plt.show(block=False)
                 #time.sleep(1/video.fps)     # to be optimized. Check if FFT is fast enough so this approximation is valid and the video plays in realtime
             
             video.fft_freqs = fft_freqs
             video.fft_amps = fft_amps
 
+            plt.ioff()
+
+            plt.show()
     #-----------------------
 
 
@@ -204,7 +222,7 @@ class Video:
                 if self.fps < 200:
                     count = math.ceil(self.__samples_per_period*2/self.fps)
                 else:
-                    count = 1
+                    count = self.indicator_detected = False
 
                 self.samplerate = self.fps*count
                 for i in range(0, count):
@@ -224,9 +242,9 @@ class Video:
             plt.imshow(frame)
             time.sleep(1/self.samplerate) """
         
-        for frame in self.cropped_frames[1]:
+        for frame in self.cropped_frames:
             cv2.imshow('Frame', frame)
-            #time.sleep(1/self.samplerate)
+            time.sleep(1/self.samplerate)
         
             # Press Q on keyboard to  exit
             if cv2.waitKey(0) & 0xFF == ord('q'):
