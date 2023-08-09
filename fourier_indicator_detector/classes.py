@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import cv2
 import time
 #from GPU_Runner import GPU_Runner
+from CPUMultiTasker import CPUMultiTasker
+import concurrent.futures
 
 #-----------------------------------------------------------------------------------------
 # Fourier_Indicator_Detector
@@ -82,13 +84,11 @@ class Fourier_Indicator_Detector:
 
         # may be implemented: single pixel or cluster
         return fft_freqs, fft_amps, frames_1channel[-1]
-    
-    #-----------------------
 
-    def plot_furier_analysis(self, video):
+   #-----------------------
 
-        def plot_single_frame(frame_1channel, fft_amps, fft_freqs):
-            
+    def plot_single_frame(self, frame_1channel, fft_amps, fft_freqs, ax1, ax2):
+
             #ax1.subplot(1,2,1)
             ax1.imshow(frame_1channel, cmap='gray')
 
@@ -110,7 +110,12 @@ class Fourier_Indicator_Detector:
 
             plt.pause(0.001)  # Pause briefly to update the plot
 
-   
+    #-----------------------
+
+    def plot_furier_analysis(self, video):
+
+        tasker = CPUMultiTasker()
+
         if not isinstance(video, Video):
             print(f'the argument video has to istance of the Video class!')
 
@@ -125,43 +130,34 @@ class Fourier_Indicator_Detector:
             
             #ax2.set_ylim(0, 1)
 
-            for i in range(2000, len(video.cropped_frames)+1):
+            for i in range(1000, len(video.cropped_frames)+1):
 
-                print(f'calculating FFT for frame {i}')
+                #print(f'calculating FFT for frame {i}')
 
+
+                # run on only 1 CPU Core
                 # do FFT for all frames till i/fps of the video
-                fft_freqs, fft_amps, frame_1channel= self.calculate_fft(video, i)
+                fft_freqs, fft_amps, frame_1channel = self.calculate_fft(video, i)
 
                 #ax2.set_ylim(0, 1.2*max(fft_amps))
 
-                print(f'plotting frame {i} and FFT')
-
-                plot_single_frame(frame_1channel, fft_amps, fft_freqs)
-
-                # show frame
-                #ax1 = fig.add_subplot(1,2,1)
+                #print(f'plotting frame {i} and FFT')
+                self.plot_single_frame(frame_1channel, fft_amps, fft_freqs, ax1, ax2)
                 
-                #clear_output(wait=True)
+                """ # run on all CPU Cores (method 1)
+                fft_freqs, fft_amps, frame_1channel = tasker.run_function(self.calculate_fft, args=(video, i))
+                tasker.run_function(self.plot_single_frame, args=(frame_1channel, fft_amps, fft_freqs, ax1, ax2)) """
 
-                #ax1.imshow(frames_1channel[i], cmap='gray')
+                """ # run on all CPU Cores (method 2)
+                with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
+                    future = executor.submit(self.calculate_fft, video, i)
+                    results = future.result()
+                    fft_freqs =results[0]
+                    fft_amps = results[1]
+                    frame_1channel = results[2]
+                    executor.submit(self.plot_single_frame, frame_1channel, fft_amps, fft_freqs, ax1, ax2)"""
 
-                """ plt.subplot(1,2,1)
-                plt.imshow(video.frames[i]) """
-
-                # plot FFT
-                #ax2 = fig.add_subplot(1,2,2)
-                #ax2.plot(fft_freqs, np.abs(fft_amps))
-                #ax2.set_xlabel('Frequency [Hz]')
-                #ax2.set_ylabel('Amplitude (tbd)')
-
-                """ plt.subplot(1,2,2)
-                plt.plot(fft_freqs, fft_amps)
-                plt.xlabel('Frequency [Hz]')
-                plt.ylabel('Amplitude (tbd)') """
-                
-                #plt.draw()
-                #plt.show(block=False)
-                #time.sleep(1/video.fps)     # to be optimized. Check if FFT is fast enough so this approximation is valid and the video plays in realtime
+                # time.sleep(1/video.fps)     # to be optimized. Check if FFT is fast enough so this approximation is valid and the video plays in realtime
             
             video.fft_freqs = fft_freqs
             video.fft_amps = fft_amps
